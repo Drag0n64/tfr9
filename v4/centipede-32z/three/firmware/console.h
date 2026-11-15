@@ -49,6 +49,16 @@ void draw_bug_pmode4_splash_screen() {
 
 namespace console {
 
+// The Dragon keyboard uses the same 8x7 matrix dimensions as the CoCo, but
+// rows PA0..PA5 are permuted. This flag is set from the host PIA1 DDRB probe.
+bool dragon_keyboard = false;
+
+inline int logical_keyboard_row(int physical_row) {
+  if (!dragon_keyboard) return physical_row;
+  static constexpr unsigned char dragon_to_coco_row[7] = {4, 5, 0, 1, 2, 3, 6};
+  return dragon_to_coco_row[physical_row];
+}
+
 // Poke a byte to CoCo memory via cross-core FIFO to the foreground.
 // Fire-and-forget: no reply expected.
 void poke(unsigned short addr, unsigned char val) {
@@ -211,7 +221,7 @@ unsigned char Coco2Inkey(struct inkey_state* state) {
           if (col == 7 && row == 6) continue;  // Shift
           if (col == 1 && row == 6) continue;  // Clear
 
-          returned_char = active_map[col][row];
+          returned_char = active_map[col][logical_keyboard_row(row)];
           break;  // Return first triggered key, not last
         }
       }
