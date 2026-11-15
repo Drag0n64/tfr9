@@ -13,6 +13,7 @@ struct CentipedeConfig {
     bool    trace_writes;
     bool    trace_reads;
     bool    become_coco3;
+    bool    dragon32;
 #if FUZIX_COCO2CENTIPEDE
     bool    fuzix;
 #endif
@@ -27,6 +28,7 @@ struct CentipedeConfig {
 
         this->floppy_pc = false;
         this->become_coco3 = false;
+        this->dragon32 = false;
 #if FUZIX_COCO2CENTIPEDE
         this->fuzix = false;
 #endif
