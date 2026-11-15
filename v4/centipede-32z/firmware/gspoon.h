@@ -411,15 +411,27 @@ void IN_RAM DriveConsole() {
           GPoke1(a, 0);
         }
         GPoke1(0xFFC9, 0);  // F1=1: Frame buffer at 0x0400
+
+        // PB2 is the Dragon 32 RAM-size strap: high selects the 16K SAM
+        // configuration (M0); low selects the 32K board configuration (M1).
+        // Keep the original compile-time CoCo selection for non-Dragon hosts.
+        byte low_bits = GPeek1(0xFF22) & 0x07;
+        if (centipede_config.dragon32) {
+          if (low_bits & 0x04) {
+            GPoke1(0xFFDB, 0);  // M0: Dragon 32 16K configuration
+          } else {
+            GPoke1(0xFFDD, 0);  // M1: Dragon 32 32K configuration
+          }
+        } else {
 #if SAM_BIT_16K
-        GPoke1(0xFFDB, 0);  // M0=1: preserve 16k DRAM mode on SAM
+          GPoke1(0xFFDB, 0);  // M0=1: preserve 16k DRAM mode on SAM
 #endif
 #if SAM_BIT_64K
-        GPoke1(0xFFDD, 0);  // M1=1: preserve 64k DRAM mode on SAM
+          GPoke1(0xFFDD, 0);  // M1=1: preserve 64k DRAM mode on SAM
 #endif
+        }
 
         // Reset VDG on PIA1 to 32x16 alphanumeric text mode (green)
-        byte low_bits = GPeek1(0xFF22) & 0x07;
         GPoke1(0xFF22, low_bits);
 
         if (preload_active) {
@@ -512,7 +524,13 @@ void IN_RAM SpoonfeedConsoleOnReset() {
 #endif
 
   for (auto *p = Coco2StartupGPokes; p->a; p++) {
-    GPoke1(p->a, p->b);
+    byte value = p->b;
+    // Dragon 32 requires PB0..PB2 as inputs: printer busy, sound input,
+    // and the RAM-size strap. CoCo2 keeps its original $FE direction.
+    if (centipede_config.dragon32 && p->a == 0xFF22 && p->b == 0xFE) {
+      value = 0xF8;
+    }
+    GPoke1(p->a, value);
   }
 
 #if USE_PMODE4
@@ -523,8 +541,8 @@ void IN_RAM SpoonfeedConsoleOnReset() {
   // GPoke1(0xFF22, 0xF8);  // F8 or F0
 
 #if SAM_BIT_64K
-  // In my coco-zoo, I see: coco1,64k: $FF22 <- $03 ; coco2,16k: $FF22 <= $07
-  byte low_bits = GPeek1(0xFF22) & 0x03;
+  // CoCo1/64K uses only PB0..PB1; Dragon32 also needs PB2 as RAM strap.
+  byte low_bits = GPeek1(0xFF22) & (centipede_config.dragon32 ? 0x07 : 0x03);
 #else
   byte low_bits = GPeek1(0xFF22) & 0x07;
 #endif
@@ -540,13 +558,21 @@ void IN_RAM SpoonfeedConsoleOnReset() {
     GPoke1(a, 42);
   }
 
+  if (centipede_config.dragon32) {
+    if (low_bits & 0x04) {
+      GPoke1(0xFFDB, 42);  // M0: Dragon 32 16K configuration
+    } else {
+      GPoke1(0xFFDD, 42);  // M1: Dragon 32 32K configuration
+    }
+  } else {
 #if SAM_BIT_16K
-  // THIS FIXED THE PMODE4 SCREEN: 0xFFDB
-  GPoke1(0xFFDB, 42);  // set M0 for 16k
+    // THIS FIXED THE PMODE4 SCREEN: 0xFFDB
+    GPoke1(0xFFDB, 42);  // set M0 for 16k
 #endif
 #if SAM_BIT_64K
-  GPoke1(0xFFDD, 42);  // set M1 for 64k
+    GPoke1(0xFFDD, 42);  // set M1 for 64k
 #endif
+  }
 
   // Set SAM V0, V1, V2 for PMODE4 (R6G): V=6
   GPoke1(0xFFC0, 42);
