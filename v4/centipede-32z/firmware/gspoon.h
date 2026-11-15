@@ -412,6 +412,16 @@ void IN_RAM DriveConsole() {
         }
         GPoke1(0xFFC9, 0);  // F1=1: Frame buffer at 0x0400
 
+        // The boot-mode Tcl script runs after the initial console setup.
+        // Therefore apply Dragon32's PIA1 direction here as well, before
+        // sampling PB2; otherwise PB2 is still configured as a CoCo output.
+        if (centipede_config.dragon32) {
+          GPoke1(0xFF23, 0x00);  // Select PIA1 DDRB
+          GPoke1(0xFF22, 0xF8);  // PB0..PB2 inputs, PB3..PB7 VDG outputs
+          GPoke1(0xFF23, 0x34);  // Select PIA1 data register
+
+        }
+
         // PB2 is the Dragon 32 RAM-size strap: high selects the 16K SAM
         // configuration (M0); low selects the 32K board configuration (M1).
         // Keep the original compile-time CoCo selection for non-Dragon hosts.
