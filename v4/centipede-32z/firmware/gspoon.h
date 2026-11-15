@@ -415,7 +415,7 @@ void IN_RAM DriveConsole() {
         // The boot-mode Tcl script runs after the initial console setup.
         // Therefore apply Dragon32's PIA1 direction here as well, before
         // sampling PB2; otherwise PB2 is still configured as a CoCo output.
-        if (centipede_config.dragon32 || console::dragon_keyboard) {
+        if (centipede_config.dragon32) {
           console::dragon_keyboard = true;
           GPoke1(0xFF23, 0x00);  // Select PIA1 DDRB
           GPoke1(0xFF22, 0xF8);  // PB0..PB2 inputs, PB3..PB7 VDG outputs
@@ -427,7 +427,7 @@ void IN_RAM DriveConsole() {
         // configuration (M0); low selects the 32K board configuration (M1).
         // Keep the original compile-time CoCo selection for non-Dragon hosts.
         byte low_bits = GPeek1(0xFF22) & 0x07;
-        if (centipede_config.dragon32 || console::dragon_keyboard) {
+        if (centipede_config.dragon32) {
           if (low_bits & 0x04) {
             GPoke1(0xFFDB, 0);  // M0: Dragon 32 16K configuration
           } else {
@@ -534,27 +534,13 @@ void IN_RAM SpoonfeedConsoleOnReset() {
   }
 #endif
 
-  auto *startup_poke = Coco2StartupGPokes;
-  // Initialize PIA0 first, then inspect the host's existing PIA1 DDRB before
-  // overwriting it. The Dragon ROM initializes DDRB to $F8; the CoCo path
-  // retains its existing direction. If the Dragon ROM has not initialized
-  // PIA1 yet, the explicit D boot profile still selects Dragon32 below.
-  for (; startup_poke->a && startup_poke->a < 0xFF20; startup_poke++) {
-    GPoke1(startup_poke->a, startup_poke->b);
-  }
-  GPoke1(0xFF23, 0x00);  // Select PIA1 DDRB for host identification
-  byte host_ddrb = GPeek1(0xFF22);
-  GPoke1(0xFF23, 0x34);  // Restore PIA1 data-register selection
-  console::dragon_keyboard = (host_ddrb == 0xF8);
-
-  for (; startup_poke->a; startup_poke++) {
-    byte value = startup_poke->b;
-    // Dragon PIA1: PB0..PB2 inputs (printer busy, sound input, RAM strap).
-    if ((console::dragon_keyboard || centipede_config.dragon32) &&
-        startup_poke->a == 0xFF22 && startup_poke->b == 0xFE) {
+  for (auto *p = Coco2StartupGPokes; p->a; p++) {
+    byte value = p->b;
+    // Dragon32 PIA1: PB0..PB2 inputs (printer busy, sound input, RAM strap).
+    if (centipede_config.dragon32 && p->a == 0xFF22 && p->b == 0xFE) {
       value = 0xF8;
     }
-    GPoke1(startup_poke->a, value);
+    GPoke1(p->a, value);
   }
 
 #if USE_PMODE4
@@ -582,7 +568,7 @@ void IN_RAM SpoonfeedConsoleOnReset() {
     GPoke1(a, 42);
   }
 
-  if (centipede_config.dragon32 || console::dragon_keyboard) {
+  if (centipede_config.dragon32) {
     if (low_bits & 0x04) {
       GPoke1(0xFFDB, 42);  // M0: Dragon 32 16K configuration
     } else {
@@ -974,7 +960,7 @@ void BackgroundSpoonFeeder(Coro* coro_self) {
           unsigned char row_bits = ~console::peek(0xFF00) & 0x7F;
           for (int row = 0; row < 7 && !found; row++) {
             if (row_bits & (1 << row)) {
-              unsigned char k = console::unshifted_map[col][console::logical_keyboard_row(row)];
+              unsigned char k = console::unshifted_map[col][row];
               if (k == 27 || k == 12 || (k >= '0' && k <= '9') || k == '@') {
                 ::boot_mode = k;
                 found = true;
