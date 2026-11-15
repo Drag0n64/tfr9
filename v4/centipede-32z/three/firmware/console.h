@@ -50,7 +50,7 @@ void draw_bug_pmode4_splash_screen() {
 namespace console {
 
 // The Dragon keyboard uses the same 8x7 matrix dimensions as the CoCo, but
-// rows PA0..PA5 are permuted. This flag is set from the host PIA1 DDRB probe.
+// rows PA0..PA5 are permuted. The explicit Dragon32 profile enables this flag.
 inline bool dragon_keyboard = false;
 
 inline int logical_keyboard_row(int physical_row) {
