@@ -1628,7 +1628,7 @@ int IN_RAM main() {
   centipede_config.SetStandard();
 #endif
 #if BECOME_COCO3
-  if (boot_mode_check == boot_mode + BOOT_MODE_CHECKER && (boot_mode == 3 || boot_mode == 89 || boot_mode == 90)) {
+  if (boot_mode_check == boot_mode + BOOT_MODE_CHECKER && (boot_mode == 3 || boot_mode == 89 || boot_mode == 90 || boot_mode == 91)) {
     centipede_config.become_coco3 = true;
   }
 #endif
